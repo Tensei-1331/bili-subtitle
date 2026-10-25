@@ -43,6 +43,8 @@ bili-sub login --open-qr                       rem 扫码登录/续期
 bili-sub config                                rem 查看当前配置
 ```
 
+链接可以直接粘贴 B 站的分享文案：程序会从「标题 + 链接」里认出 BV 号和 `?p=` 分 P，`vd_source` 之类的跟踪参数会被忽略。
+
 写完后是否自动打开由配置和参数共同决定：
 
 - 配置 `autoOpen: true` 且 `openWith: "typora"` → 写完自动打开 Typora；
