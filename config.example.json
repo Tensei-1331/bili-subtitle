@@ -1,0 +1,48 @@
+// bili-sub 配置：删掉的字段会用默认值；支持 // 和 /* */ 注释。
+// 保存配置（GUI 或 bili-sub config init）时会按这个格式重写。
+{
+  // 笔记输出目录；相对路径按本文件所在目录解析
+  "outputDir": "稿件",
+  // 总结方式：api 用 OpenAI 兼容接口，opencode 用 OpenCode Go 的 API
+  "summarizer": "api",
+  // API 模型名（OpenAI 兼容接口，默认 DeepSeek）
+  "model": "deepseek-flash",
+  // OpenCode Go 模型（默认 deepseek-v4.1-flash）
+  "opencodeModel": "deepseek-v4.1-flash",
+  // OpenCode Go 的 API key；留空则读环境变量 OPENCODE_GO_API_KEY
+  "opencodeApiKey": "",
+  // OpenCode Go 的 OpenAI 兼容基址（换 Zen 线路时改这里）
+  "opencodeBaseUrl": "https://opencode.ai/inference/go/openai/v1",
+  // API key；留空则依次读环境变量 DEEPSEEK_API_KEY、OPENAI_API_KEY、opencode auth.json
+  "apiKey": "",
+  // OpenAI 兼容接口的 base URL，可换成其他服务
+  "baseUrl": "https://api.deepseek.com/v1",
+  // 默认提示词预设文件
+  "promptFile": "prompts/default.md",
+  // 笔记模板文件
+  "templateFile": "templates/note.md",
+  // B 站 cookies 文件
+  "cookiesFile": "data/cookies.txt",
+  // yt-dlp.exe 路径；留空则从 PATH 里找
+  "ytdlpPath": "",
+  // 写完后打开方式：typora / obsidian / none
+  "openWith": "none",
+  // 写完是否自动打开（配合 openWith）
+  "autoOpen": false,
+  // Typora.exe 路径；openWith=typora 时必填
+  "typoraPath": "",
+  // 字幕语言优先级
+  "subLangs": ["ai-zh", "zh-Hans", "zh-CN", "zh", "ai-en", "en"],
+  // 是否保留原始 .srt 到 data/subs/
+  "keepSubtitle": false,
+  // 是否把字幕正文附进笔记
+  "includeTranscript": false,
+  // 同名文件处理：suffix / overwrite / skip
+  "onExists": "suffix",
+  // 长字幕分段阈值（字符数）
+  "maxChars": 300000,
+  // 单次总结请求超时（秒）
+  "apiTimeoutSeconds": 300,
+  // 单次 B 站请求超时（秒）
+  "requestTimeoutSeconds": 30
+}

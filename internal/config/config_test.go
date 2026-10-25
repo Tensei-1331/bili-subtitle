@@ -18,7 +18,9 @@ func TestDefaultValues(t *testing.T) {
 		{"OutputDir", c.OutputDir, "稿件"},
 		{"Summarizer", c.Summarizer, "api"},
 		{"Model", c.Model, "deepseek-flash"},
-		{"OpencodeModel", c.OpencodeModel, "opencode/deepseek-v4.1-flash-free"},
+		{"OpencodeModel", c.OpencodeModel, "deepseek-v4.1-flash"},
+		{"OpencodeAPIKey", c.OpencodeAPIKey, ""},
+		{"OpencodeBaseURL", c.OpencodeBaseURL, "https://opencode.ai/inference/go/openai/v1"},
 		{"APIKey", c.APIKey, ""},
 		{"BaseURL", c.BaseURL, "https://api.deepseek.com/v1"},
 		{"PromptFile", c.PromptFile, "prompts/default.md"},
@@ -201,5 +203,57 @@ func TestLoadDefaultPathCreatesConfigFile(t *testing.T) {
 	}
 	if _, err := os.Stat(p); err != nil {
 		t.Errorf("首次运行没在默认路径 %q 生成 config.json: %v", p, err)
+	}
+}
+func TestLoadSupportsComments(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	raw := `// 顶部注释
+{
+  // 行注释
+  "model": "m1",
+  "baseUrl": "https://example.com/v1", // 字符串里的 // 不能被当成注释
+  /* 块注释
+     可以多行 */
+  "maxChars": 123
+}
+`
+	if err := os.WriteFile(path, []byte(raw), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.Model != "m1" || c.MaxChars != 123 {
+		t.Errorf("注释文件解析不对: model=%q maxChars=%d", c.Model, c.MaxChars)
+	}
+	if c.BaseURL != "https://example.com/v1" {
+		t.Errorf("字符串里的 // 被误删了: %q", c.BaseURL)
+	}
+}
+
+func TestSaveWritesCommentedConfig(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.json")
+	c := Default()
+	c.BaseURL = "https://example.com/v1"
+	c.APIKey = "test-key"
+	if err := c.Save(path); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "//") {
+		t.Errorf("保存的配置里没有注释: %s", data)
+	}
+	got, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if got.BaseURL != "https://example.com/v1" || got.APIKey != "test-key" {
+		t.Errorf("带注释的配置往返不对: baseUrl=%q apiKey=%q", got.BaseURL, got.APIKey)
 	}
 }

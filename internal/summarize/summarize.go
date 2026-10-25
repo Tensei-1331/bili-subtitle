@@ -1,4 +1,4 @@
-// Package summarize 把字幕整理成稿件：支持 DeepSeek API 和 opencode CLI 两种后端，
+// Package summarize 把字幕整理成稿件：支持 OpenAI 兼容 API 和 OpenCode Go 两种方式，
 // 字幕太长时先分段总结再合并。
 package summarize
 
@@ -64,8 +64,9 @@ func backendFor(cfg *config.Config) (backendFunc, error) {
 			return callAPI(ctx, cfg, prompt)
 		}, nil
 	case "opencode":
+		session := newOpencodeSession()
 		return func(ctx context.Context, prompt string) (string, error) {
-			return callOpencode(ctx, cfg, prompt)
+			return callOpencode(ctx, cfg, prompt, session)
 		}, nil
 	default:
 		return nil, fmt.Errorf("不支持的 summarizer %q：只能填 api 或 opencode", cfg.Summarizer)

@@ -14,7 +14,7 @@ import (
 //   BILI_SUB_LIVE=1 go test ./internal/summarize -run TestLive -v
 //
 // 需要网络；api 后端要能拿到 DeepSeek key（config.apiKey / DEEPSEEK_API_KEY /
-// %USERPROFILE%\.local\share\opencode\auth.json 三者之一），opencode 后端要本机装了 opencode。
+// %USERPROFILE%\.local\share\opencode\auth.json 三者之一）；opencode 方式需要 OPENCODE_API_KEY。
 
 // liveTranscript 是一段约 300 字的假字幕，够触发一次完整总结。
 const liveTranscript = "今天我们来聊聊 Go 语言的并发模型。Go 用 goroutine 做并发，goroutine 是运行时管理的用户态协程，" +

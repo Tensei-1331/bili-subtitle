@@ -3,3 +3,9 @@ bin/
 config.json
 data/
 *.log
+# 本地 agent 指令，不进公开仓库（要公开时用 git add -f 单独加）
+AGENTS.md
+CLAUDE.md
+.claude/
+.cursor/
+.opencode/

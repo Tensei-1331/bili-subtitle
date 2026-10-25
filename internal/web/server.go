@@ -141,6 +141,8 @@ type configView struct {
 	Summarizer        string   `json:"summarizer"`
 	Model             string   `json:"model"`
 	OpencodeModel     string   `json:"opencodeModel"`
+	OpencodeBaseURL   string   `json:"opencodeBaseUrl"`
+	OpencodeAPIKeySet bool     `json:"opencodeApiKeySet"`
 	OpenWith          string   `json:"openWith"`
 	AutoOpen          bool     `json:"autoOpen"`
 	TyporaPath        string   `json:"typoraPath"`
@@ -160,6 +162,8 @@ func viewOf(cfg *config.Config) configView {
 		Summarizer:        cfg.Summarizer,
 		Model:             cfg.Model,
 		OpencodeModel:     cfg.OpencodeModel,
+		OpencodeBaseURL:   cfg.OpencodeBaseURL,
+		OpencodeAPIKeySet: strings.TrimSpace(cfg.OpencodeAPIKey) != "",
 		OpenWith:          cfg.OpenWith,
 		AutoOpen:          cfg.AutoOpen,
 		TyporaPath:        cfg.TyporaPath,
@@ -208,6 +212,8 @@ type configPatch struct {
 	Summarizer        *string `json:"summarizer"`
 	Model             *string `json:"model"`
 	OpencodeModel     *string `json:"opencodeModel"`
+	OpencodeAPIKey    *string `json:"opencodeApiKey"`
+	OpencodeBaseURL   *string `json:"opencodeBaseUrl"`
 	OpenWith          *string `json:"openWith"`
 	AutoOpen          *bool   `json:"autoOpen"`
 	PromptFile        *string `json:"promptFile"`
@@ -240,6 +246,12 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	if patch.OpencodeModel != nil {
 		s.cfg.OpencodeModel = *patch.OpencodeModel
+	}
+	if patch.OpencodeAPIKey != nil {
+		s.cfg.OpencodeAPIKey = *patch.OpencodeAPIKey
+	}
+	if patch.OpencodeBaseURL != nil {
+		s.cfg.OpencodeBaseURL = *patch.OpencodeBaseURL
 	}
 	if patch.OpenWith != nil {
 		s.cfg.OpenWith = *patch.OpenWith

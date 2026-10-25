@@ -72,6 +72,12 @@ func callAPI(ctx context.Context, cfg *config.Config, prompt string) (string, er
 	if model == "" {
 		model = defaultModel
 	}
+	return callChatEndpoint(ctx, cfg, baseURL+"/chat/completions", key, model, prompt, nil)
+}
+
+// callChatEndpoint 调用任意 OpenAI 兼容的 /chat/completions 接口。
+// headers 用于 OpenCode Go 这类需要额外请求头的网关。
+func callChatEndpoint(ctx context.Context, cfg *config.Config, endpoint, key, model, prompt string, headers map[string]string) (string, error) {
 	payload, err := json.Marshal(apiRequest{
 		Model:    model,
 		Messages: []apiMessage{{Role: "user", Content: prompt}},
@@ -79,7 +85,6 @@ func callAPI(ctx context.Context, cfg *config.Config, prompt string) (string, er
 	if err != nil {
 		return "", fmt.Errorf("构造 API 请求体失败: %w", err)
 	}
-	endpoint := baseURL + "/chat/completions"
 
 	var lastErr error
 	var lastRetryAfter time.Duration
@@ -95,7 +100,7 @@ func callAPI(ctx context.Context, cfg *config.Config, prompt string) (string, er
 			}
 		}
 		attempts++
-		content, retryable, retryAfter, err := doAPIOnce(ctx, cfg, endpoint, key, payload)
+		content, retryable, retryAfter, err := doAPIOnce(ctx, cfg, endpoint, key, payload, headers)
 		if err == nil {
 			return content, nil
 		}
@@ -108,7 +113,7 @@ func callAPI(ctx context.Context, cfg *config.Config, prompt string) (string, er
 }
 
 // doAPIOnce 发一次请求。retryable 表示这次失败要不要重试（429 或 5xx）。
-func doAPIOnce(ctx context.Context, cfg *config.Config, endpoint, key string, payload []byte) (content string, retryable bool, retryAfter time.Duration, err error) {
+func doAPIOnce(ctx context.Context, cfg *config.Config, endpoint, key string, payload []byte, headers map[string]string) (content string, retryable bool, retryAfter time.Duration, err error) {
 	reqCtx, cancel := context.WithTimeout(ctx, requestTimeout(cfg))
 	defer cancel()
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, endpoint, bytes.NewReader(payload))
@@ -117,6 +122,9 @@ func doAPIOnce(ctx context.Context, cfg *config.Config, endpoint, key string, pa
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+key)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 
 	resp, err := apiClient.Do(req)
 	if err != nil {
@@ -152,7 +160,8 @@ func doAPIOnce(ctx context.Context, cfg *config.Config, endpoint, key string, pa
 	return content, false, 0, nil
 }
 
-// resolveAPIKey 按 cfg.APIKey -> env DEEPSEEK_API_KEY -> opencode auth.json 的顺序找 key。
+// resolveAPIKey 按 cfg.APIKey -> env DEEPSEEK_API_KEY -> env OPENAI_API_KEY
+// -> opencode auth.json 的顺序找 key。任何 OpenAI 兼容服务都可以用这些入口。
 func resolveAPIKey(cfg *config.Config) (string, error) {
 	if cfg != nil {
 		if key := strings.TrimSpace(cfg.APIKey); key != "" {
@@ -162,12 +171,15 @@ func resolveAPIKey(cfg *config.Config) (string, error) {
 	if key := strings.TrimSpace(os.Getenv("DEEPSEEK_API_KEY")); key != "" {
 		return key, nil
 	}
+	if key := strings.TrimSpace(os.Getenv("OPENAI_API_KEY")); key != "" {
+		return key, nil
+	}
 	if opencodeAuthPath != "" {
 		if key := readOpencodeAuthKey(opencodeAuthPath); key != "" {
 			return key, nil
 		}
 	}
-	return "", fmt.Errorf("找不到 DeepSeek API key：config.json 的 apiKey 为空，环境变量 DEEPSEEK_API_KEY 没设置，也没从 %s 读到 deepseek.key", opencodeAuthPath)
+	return "", fmt.Errorf("找不到 API key：config.json 的 apiKey 为空，环境变量 DEEPSEEK_API_KEY / OPENAI_API_KEY 没设置，也没从 %s 读到 deepseek.key", opencodeAuthPath)
 }
 
 // readOpencodeAuthKey 从 opencode 的 auth.json 里读 deepseek.key，读不到返回空串。

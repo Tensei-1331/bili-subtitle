@@ -15,10 +15,12 @@ import (
 type Config struct {
 	OutputDir         string   `json:"outputDir"`             // 笔记输出目录
 	Summarizer        string   `json:"summarizer"`            // api | opencode
-	Model             string   `json:"model"`                 // api 后端用的模型名
-	OpencodeModel     string   `json:"opencodeModel"`         // opencode 后端用的模型名
+	Model             string   `json:"model"`                 // OpenAI 兼容接口的模型名
+	OpencodeModel     string   `json:"opencodeModel"`         // OpenCode Go 模型
+	OpencodeAPIKey    string   `json:"opencodeApiKey"`        // OpenCode Go 的 API key，可空回退环境变量 OPENCODE_GO_API_KEY
+	OpencodeBaseURL   string   `json:"opencodeBaseUrl"`       // OpenCode Go 的 OpenAI 兼容基址
 	APIKey            string   `json:"apiKey"`                // 可空，回退环境变量 / opencode auth.json
-	BaseURL           string   `json:"baseUrl"`               // OpenAI 兼容接口的 base URL
+	BaseURL           string   `json:"baseUrl"`               // OpenAI 兼容接口的 base URL（默认 DeepSeek）
 	PromptFile        string   `json:"promptFile"`            // 总结用的 prompt 模板
 	TemplateFile      string   `json:"templateFile"`          // 笔记模板
 	CookiesFile       string   `json:"cookiesFile"`           // B 站 cookies
@@ -45,7 +47,9 @@ func Default() *Config {
 		OutputDir:         `稿件`,
 		Summarizer:        "api",
 		Model:             "deepseek-flash",
-		OpencodeModel:     "opencode/deepseek-v4.1-flash-free",
+		OpencodeModel:     "deepseek-v4.1-flash",
+		OpencodeAPIKey:    "",
+		OpencodeBaseURL:   "https://opencode.ai/inference/go/openai/v1",
 		APIKey:            "",
 		BaseURL:           "https://api.deepseek.com/v1",
 		PromptFile:        "prompts/default.md",
@@ -113,14 +117,15 @@ func Load(path string) (*Config, error) {
 		return c, nil
 	}
 	c := Default() // 先铺默认值，JSON 里缺的字段就保持默认
-	if len(bytes.TrimSpace(data)) == 0 {
+	clean := bytes.TrimSpace(stripJSONComments(trimBOM(data)))
+	if len(clean) == 0 {
 		c.path = abs
 		if err := c.Save(abs); err != nil {
 			return nil, err
 		}
 		return c, nil
 	}
-	if err := json.Unmarshal(data, c); err != nil {
+	if err := json.Unmarshal(clean, c); err != nil {
 		return nil, fmt.Errorf("解析配置 %s 失败: %w", abs, err)
 	}
 	c.path = abs
@@ -139,11 +144,10 @@ func (c *Config) Save(path string) error {
 	if err != nil {
 		return fmt.Errorf("解析配置路径 %s 失败: %w", path, err)
 	}
-	data, err := json.MarshalIndent(c, "", "  ")
+	data, err := c.MarshalCommented()
 	if err != nil {
 		return fmt.Errorf("序列化配置失败: %w", err)
 	}
-	data = append(data, 10) // 末尾补一个换行符
 	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
 		return fmt.Errorf("创建配置目录 %s 失败: %w", filepath.Dir(abs), err)
 	}

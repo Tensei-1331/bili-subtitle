@@ -342,6 +342,7 @@ func TestResolveAPIKeyOrder(t *testing.T) {
 	}
 	opencodeAuthPath = authFile
 	t.Setenv("DEEPSEEK_API_KEY", "")
+	t.Setenv("OPENAI_API_KEY", "")
 
 	cfg := config.Default()
 	cfg.APIKey = "cfg-key"
@@ -363,7 +364,7 @@ func TestResolveAPIKeyOrder(t *testing.T) {
 	opencodeAuthPath = filepath.Join(t.TempDir(), "missing.json")
 	if _, err := resolveAPIKey(cfg); err == nil {
 		t.Error("三个来源都没有时应该报错")
-	} else if !strings.Contains(err.Error(), "找不到 DeepSeek API key") {
+	} else if !strings.Contains(err.Error(), "找不到 API key") {
 		t.Errorf("错误信息不明确: %v", err)
 	}
 }
