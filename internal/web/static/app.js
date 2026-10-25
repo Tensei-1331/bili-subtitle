@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   var TOKEN = new URLSearchParams(location.search).get("token") || "";
-  var state = { config: null, defaultPrompt: "", lastText: "", lastSrt: "", lastPath: "", busy: false, ctrl: null, timer: null, t0: 0 };
+  var state = { config: null, defaultPrompt: "", presetName: "", lastText: "", lastSrt: "", lastPath: "", busy: false, ctrl: null, timer: null, t0: 0 };
   var $ = function (id) { return document.getElementById(id); };
 
   function api(path, body, signal) {
@@ -65,12 +65,14 @@
     state.defaultPrompt = data.prompt || "";
     $("configPath").textContent = "配置：" + data.configPath;
     $("outDir").value = data.config.outputDir || "";
-    $("openWith").value = data.config.openWith || "typora";
+    $("openWith").value = data.config.openWith || "none";
+    $("autoOpen").checked = !!data.config.autoOpen;
     $("summarizer").value = data.config.summarizer === "opencode" ? "opencode" : "api";
     $("model").value = modelForBackend($("summarizer").value);
     $("keepSub").checked = !!data.config.keepSubtitle;
     $("includeTranscript").checked = !!data.config.includeTranscript;
-    if (!state.lastText) $("prompt").value = state.defaultPrompt;
+    if (!state.lastText) $("prompt").value = data.prompt || state.defaultPrompt;
+    renderPresets(data.presets || [], data.currentPreset || "");
     renderHistory(data.history || []);
   }
   function modelForBackend(backend) {
@@ -104,6 +106,64 @@
       li.appendChild(t); li.appendChild(b); li.appendChild(d); li.appendChild(btn);
       ul.appendChild(li);
     });
+  }
+
+  function renderPresets(presets, current) {
+    var sel = $("preset");
+    sel.innerHTML = "";
+    (presets || []).forEach(function (p) {
+      var o = document.createElement("option");
+      o.value = p.name;
+      o.textContent = p.name;
+      sel.appendChild(o);
+    });
+    if (current) {
+      sel.value = current;
+      state.presetName = current;
+    }
+  }
+
+  function loadPreset(name) {
+    if (!name) return;
+    api("/api/preset?name=" + encodeURIComponent(name)).then(function (data) {
+      if (!data.ok) { fail(new Error(data.error)); return; }
+      $("prompt").value = data.text || "";
+      state.presetName = data.name;
+      state.defaultPrompt = data.text || "";
+      status("已载入预设 " + data.name, "ok");
+    }).catch(function (err) { fail(err); });
+  }
+
+  function savePreset() {
+    var name = $("preset").value || state.presetName;
+    if (!name) { status("先选一个预设", "err"); return; }
+    api("/api/preset", { name: name, text: $("prompt").value }).then(function (data) {
+      if (!data.ok) { fail(new Error(data.error)); return; }
+      state.defaultPrompt = $("prompt").value;
+      renderPresets(data.presets || [], data.currentPreset || "");
+      status("已保存预设 " + data.name, "ok");
+    }).catch(function (err) { fail(err); });
+  }
+
+  function newPreset() {
+    var name = window.prompt("新预设名（不用带 .md）", "");
+    if (!name) return;
+    api("/api/preset", { name: name, text: $("prompt").value }).then(function (data) {
+      if (!data.ok) { fail(new Error(data.error)); return; }
+      renderPresets(data.presets || [], data.name || "");
+      state.presetName = data.name;
+      status("已新建预设 " + data.name, "ok");
+    }).catch(function (err) { fail(err); });
+  }
+
+  function setDefaultPreset() {
+    var name = $("preset").value;
+    if (!name) { return; }
+    api("/api/config", { promptFile: "prompts/" + name + ".md" }).then(function (data) {
+      if (!data.ok) { fail(new Error(data.error)); return; }
+      state.config = data.config;
+      status("默认预设已设为 " + name, "ok");
+    }).catch(function (err) { fail(err); });
   }
 
   function doFetch() {
@@ -145,6 +205,7 @@
       opencodeModel: $("summarizer").value === "opencode" ? $("model").value.trim() : "",
       outDir: $("outDir").value.trim(),
       openWith: $("openWith").value,
+      autoOpen: $("autoOpen").checked,
       keepSubtitle: $("keepSub").checked,
       includeTranscript: $("includeTranscript").checked
     };
@@ -211,6 +272,7 @@
       model: state.config ? state.config.model : "",
       opencodeModel: state.config ? state.config.opencodeModel : "",
       openWith: $("openWith").value,
+      autoOpen: $("autoOpen").checked,
       keepSubtitle: $("keepSub").checked,
       includeTranscript: $("includeTranscript").checked
     }).then(function (data) {
@@ -234,19 +296,18 @@
     $("btnCopyText").onclick = function () { copyText(state.lastText || ""); };
     $("btnDownloadTxt").onclick = function () { download(baseName() + ".txt", state.lastText || ""); };
     $("btnDownloadSrt").onclick = function () { download(baseName() + ".srt", state.lastSrt || ""); };
-    $("btnSavePrompt").onclick = function () {
-      api("/api/prompt", { text: $("prompt").value }).then(function (data) {
-        if (data.ok) { state.defaultPrompt = $("prompt").value; status("提示词已保存", "ok"); }
-        else fail(new Error(data.error));
-      }).catch(function (err) { fail(err); });
-    };
-    $("btnResetPrompt").onclick = function () { $("prompt").value = state.defaultPrompt || ""; status("已恢复默认提示词", "ok"); };
+    $("btnSavePreset").onclick = savePreset;
+    $("btnNewPreset").onclick = newPreset;
+    $("btnSetDefaultPreset").onclick = setDefaultPreset;
+    $("btnReloadPreset").onclick = function () { loadPreset($("preset").value); };
+    $("preset").onchange = function () { loadPreset($("preset").value); };
     $("btnOpenTypora").onclick = function () { openNote(state.lastPath, "typora"); };
     $("btnOpenObsidian").onclick = function () { openNote(state.lastPath, "obsidian"); };
     $("btnShowFolder").onclick = function () { showFolder(state.lastPath); };
     $("summarizer").onchange = function () { $("model").value = modelForBackend($("summarizer").value); };
     $("outDir").onchange = saveConfig;
     $("openWith").onchange = saveConfig;
+    $("autoOpen").onchange = saveConfig;
     $("keepSub").onchange = saveConfig;
     $("includeTranscript").onchange = saveConfig;
     $("input").addEventListener("keydown", function (e) { if (e.key === "Enter") doRun(); });

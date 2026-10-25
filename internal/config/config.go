@@ -24,6 +24,7 @@ type Config struct {
 	CookiesFile       string   `json:"cookiesFile"`           // B 站 cookies
 	YtDlpPath         string   `json:"ytdlpPath"`             // yt-dlp.exe 路径
 	OpenWith          string   `json:"openWith"`              // typora | obsidian | none
+	AutoOpen          bool     `json:"autoOpen"`              // 写完稿件后是否自动打开
 	TyporaPath        string   `json:"typoraPath"`            // Typora.exe 路径
 	SubLangs          []string `json:"subLangs"`              // 字幕语言优先级
 	KeepSubtitle      bool     `json:"keepSubtitle"`          // 是否保留原始 .srt
@@ -52,6 +53,7 @@ func Default() *Config {
 		CookiesFile:       "data/cookies.txt",
 		YtDlpPath:         "",
 		OpenWith:          "none",
+		AutoOpen:          false,
 		TyporaPath:        "",
 		SubLangs:          []string{"ai-zh", "zh-Hans", "zh-CN", "zh", "ai-en", "en"},
 		KeepSubtitle:      false,

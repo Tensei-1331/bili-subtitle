@@ -26,6 +26,7 @@ func TestDefaultValues(t *testing.T) {
 		{"CookiesFile", c.CookiesFile, "data/cookies.txt"},
 		{"YtDlpPath", c.YtDlpPath, ""},
 		{"OpenWith", c.OpenWith, "none"},
+		{"AutoOpen", c.AutoOpen, false},
 		{"TyporaPath", c.TyporaPath, ""},
 		{"SubLangs", strings.Join(c.SubLangs, ","), "ai-zh,zh-Hans,zh-CN,zh,ai-en,en"},
 		{"KeepSubtitle", c.KeepSubtitle, false},

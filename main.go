@@ -21,7 +21,7 @@ import (
 	"rsc.io/qr"
 )
 
-const version = "0.2.0"
+const version = "0.3.0"
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -64,6 +64,7 @@ type runOptions struct {
 	opencodeModel     string
 	promptFile        string
 	prompt            string
+	preset            string
 	engine            string
 	langs             string
 	cookies           string
@@ -72,6 +73,8 @@ type runOptions struct {
 	onExists          string
 	dryRun            bool
 	verbose           bool
+	autoOpen          bool
+	autoOpenSet       bool
 }
 
 func (o runOptions) openWith() string {
@@ -97,12 +100,12 @@ func parseRunArgs(args []string) (runOptions, string, error) {
 	value := map[string]*string{
 		"config": &o.config, "out": &o.out, "open": &o.open,
 		"summarizer": &o.summarizer, "model": &o.model, "opencode-model": &o.opencodeModel,
-		"prompt-file": &o.promptFile, "prompt": &o.prompt, "engine": &o.engine,
+		"prompt-file": &o.promptFile, "prompt": &o.prompt, "preset": &o.preset, "engine": &o.engine,
 		"langs": &o.langs, "cookies": &o.cookies, "on-exists": &o.onExists,
 	}
 	boolean := map[string]*bool{
 		"no-open": &o.noOpen, "keep-sub": &o.keepSub,
-		"include-transcript": &o.includeTranscript, "dry-run": &o.dryRun, "verbose": &o.verbose,
+		"include-transcript": &o.includeTranscript, "dry-run": &o.dryRun, "verbose": &o.verbose, "auto-open": &o.autoOpen,
 	}
 	var input string
 	i := 0
@@ -123,6 +126,9 @@ func parseRunArgs(args []string) (runOptions, string, error) {
 					*p = v
 				} else {
 					*p = true
+				}
+				if name == "auto-open" {
+					o.autoOpenSet = true
 				}
 				i++
 				continue
@@ -165,6 +171,13 @@ func runFetch(args []string) error {
 	if err != nil {
 		return err
 	}
+	if o.preset != "" {
+		p, err := presetPath(cfg, o.preset)
+		if err != nil {
+			return err
+		}
+		o.promptFile = p
+	}
 	ctx := context.Background()
 	logf := func(format string, a ...any) { fmt.Printf(format+"\n", a...) }
 	fetchOpts := app.FetchOptions{Input: input, Engine: o.engine, Cookies: o.cookies, Langs: o.langsList()}
@@ -178,6 +191,10 @@ func runFetch(args []string) error {
 		return nil
 	}
 
+	var autoOpen *bool
+	if o.autoOpenSet {
+		autoOpen = &o.autoOpen
+	}
 	_, err = app.Run(ctx, cfg, app.RunOptions{
 		FetchOptions:      fetchOpts,
 		Prompt:            o.prompt,
@@ -187,6 +204,7 @@ func runFetch(args []string) error {
 		OpencodeModel:     o.opencodeModel,
 		OutDir:            o.out,
 		OpenWith:          o.openWith(),
+		AutoOpen:          autoOpen,
 		KeepSubtitle:      o.keepSub,
 		IncludeTranscript: o.includeTranscript,
 		OnExists:          o.onExists,
@@ -366,6 +384,26 @@ func loadConfig(path string) (*config.Config, string, error) {
 	return cfg, path, nil
 }
 
+// presetPath 把 --preset 的名字解析成 prompts 目录里的文件。
+func presetPath(cfg *config.Config, name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" || name == "." || name == ".." {
+		return "", errors.New("--preset 名字不合法")
+	}
+	if filepath.Base(name) != name {
+		return "", fmt.Errorf("预设名不能带路径：%s", name)
+	}
+	if !strings.HasSuffix(strings.ToLower(name), ".md") {
+		name += ".md"
+	}
+	dir := filepath.Dir(cfg.Resolve(cfg.PromptFile))
+	full := filepath.Join(dir, name)
+	if _, err := os.Stat(full); err != nil {
+		return "", fmt.Errorf("找不到预设 %s（应放在 %s）", name, dir)
+	}
+	return full, nil
+}
+
 // saveQRPNG 把二维码内容渲染成 PNG，扫码时比终端字符更清楚。
 func saveQRPNG(path, content string) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -399,12 +437,14 @@ func printUsage() {
 		"",
 		"选项：",
 		"  --out <目录>             输出目录（覆盖配置）",
-		"  --open <typora|obsidian|none>  写完后怎么打开",
+		"  --open <typora|obsidian|none>  写完后用指定程序打开",
+		"  --auto-open              写完自动打开（目标取配置 openWith）",
 		"  --no-open                不自动打开",
 		"  --summarizer <api|opencode>   用哪个后端总结",
 		"  --model <名字>           API 模型（默认 deepseek-flash）",
 		"  --opencode-model <名字>  opencode 模型（默认 opencode/deepseek-v4.1-flash-free）",
 		"  --prompt-file <路径>     自定义提示词文件",
+		"  --preset <名字>          用 prompts/<名字>.md 预设",
 		"  --prompt <文本>          直接给提示词（覆盖模板文件）",
 		"  --engine <auto|api|ytdlp>     字幕来源：自动、仅 API、仅 yt-dlp",
 		"  --langs <列表>           字幕语言优先级，逗号分隔",

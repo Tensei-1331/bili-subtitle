@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,9 @@ func newTestServer(t *testing.T) (*Server, *config.Config, string) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(promptDir, "default.md"), []byte("默认提示词"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(promptDir, "faithful.md"), []byte("忠实预设"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return New(cfg, cfgPath), cfg, cfgPath
@@ -91,7 +95,7 @@ func TestStateAndIndex(t *testing.T) {
 func TestConfigPatchPersists(t *testing.T) {
 	srv, _, cfgPath := newTestServer(t)
 	h := srv.Handler()
-	body := strings.NewReader(`{"outputDir":"D:/tmp/x","summarizer":"opencode","keepSubtitle":true}`)
+	body := strings.NewReader(`{"outputDir":"D:/tmp/x","summarizer":"opencode","keepSubtitle":true,"autoOpen":true}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/config?token="+srv.token, body)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -103,7 +107,7 @@ func TestConfigPatchPersists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("重新加载配置失败：%v", err)
 	}
-	if saved.OutputDir != "D:/tmp/x" || saved.Summarizer != "opencode" || !saved.KeepSubtitle {
+	if saved.OutputDir != "D:/tmp/x" || saved.Summarizer != "opencode" || !saved.KeepSubtitle || !saved.AutoOpen {
 		t.Fatalf("配置没有写到磁盘：%+v", saved)
 	}
 }
@@ -125,5 +129,33 @@ func TestPromptSave(t *testing.T) {
 	}
 	if string(data) != "新的提示词" {
 		t.Fatalf("提示词内容不对：%q", data)
+	}
+}
+func TestPresetEndpoints(t *testing.T) {
+	srv, _, _ := newTestServer(t)
+	h := srv.Handler()
+
+	rec := doGet(t, h, "/api/presets", srv.token)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "faithful") || !strings.Contains(rec.Body.String(), "default") {
+		t.Fatalf("预设列表不对：%d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doGet(t, h, "/api/preset?name=faithful", srv.token)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "忠实预设") {
+		t.Fatalf("读预设不对：%d %s", rec.Code, rec.Body.String())
+	}
+
+	body := strings.NewReader(`{"name":"自定义","text":"新预设内容"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/preset?token="+srv.token, body)
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("保存预设失败：%d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = doGet(t, h, "/api/preset?name="+url.QueryEscape("自定义"), srv.token)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "新预设内容") {
+		t.Fatalf("读回新预设不对：%d %s", rec.Code, rec.Body.String())
 	}
 }

@@ -8,7 +8,7 @@
 </head>
 <body>
 <header>
-  <h1>bili-sub <span class="ver">v0.2</span></h1>
+  <h1>bili-sub <span class="ver">v0.3</span></h1>
   <span class="muted" id="configPath"></span>
 </header>
 <main>
@@ -41,6 +41,7 @@
           <option value="none">不打开</option>
         </select>
       </label>
+      <label><input type="checkbox" id="autoOpen"> 完成后自动打开</label>
     </div>
     <div class="row">
       <label class="grow">输出目录 <input id="outDir" class="grow"></label>
@@ -64,10 +65,15 @@
 
     <section class="card">
       <h2>提示词</h2>
+      <div class="row wrap">
+        <label>预设 <select id="preset"></select></label>
+        <button id="btnReloadPreset">重新载入</button>
+        <button id="btnSavePreset">保存到该预设</button>
+        <button id="btnNewPreset">另存为新预设</button>
+        <button id="btnSetDefaultPreset">设为默认</button>
+      </div>
       <textarea id="prompt" class="scroll tall" spellcheck="false"></textarea>
       <div class="row wrap">
-        <button id="btnResetPrompt">恢复默认</button>
-        <button id="btnSavePrompt">保存为默认</button>
         <label><input type="checkbox" id="keepSub"> 保留 .srt</label>
         <label><input type="checkbox" id="includeTranscript"> 附字幕正文</label>
       </div>

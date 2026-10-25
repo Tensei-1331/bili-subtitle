@@ -93,6 +93,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/state", s.auth(s.handleState))
 	mux.HandleFunc("/api/config", s.auth(s.handleConfig))
 	mux.HandleFunc("/api/prompt", s.auth(s.handlePrompt))
+	mux.HandleFunc("/api/presets", s.auth(s.handlePresets))
+	mux.HandleFunc("/api/preset", s.auth(s.handlePreset))
 	mux.HandleFunc("/api/fetch", s.auth(s.handleFetch))
 	mux.HandleFunc("/api/summarize", s.auth(s.handleSummarize))
 	mux.HandleFunc("/api/open", s.auth(s.handleOpen))
@@ -140,6 +142,7 @@ type configView struct {
 	Model             string   `json:"model"`
 	OpencodeModel     string   `json:"opencodeModel"`
 	OpenWith          string   `json:"openWith"`
+	AutoOpen          bool     `json:"autoOpen"`
 	TyporaPath        string   `json:"typoraPath"`
 	PromptFile        string   `json:"promptFile"`
 	TemplateFile      string   `json:"templateFile"`
@@ -158,6 +161,7 @@ func viewOf(cfg *config.Config) configView {
 		Model:             cfg.Model,
 		OpencodeModel:     cfg.OpencodeModel,
 		OpenWith:          cfg.OpenWith,
+		AutoOpen:          cfg.AutoOpen,
 		TyporaPath:        cfg.TyporaPath,
 		PromptFile:        cfg.PromptFile,
 		TemplateFile:      cfg.TemplateFile,
@@ -188,12 +192,14 @@ func (s *Server) handleState(w http.ResponseWriter, r *http.Request) {
 		prompt = string(b)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":         true,
-		"configPath": cfgPath,
-		"promptPath": cfg.Resolve(cfg.PromptFile),
-		"prompt":     prompt,
-		"config":     viewOf(cfg),
-		"history":    s.loadHistory(20),
+		"ok":            true,
+		"configPath":    cfgPath,
+		"promptPath":    cfg.Resolve(cfg.PromptFile),
+		"prompt":        prompt,
+		"config":        viewOf(cfg),
+		"history":       s.loadHistory(20),
+		"presets":       listPresets(cfg),
+		"currentPreset": presetNameOf(cfg),
 	})
 }
 
@@ -203,6 +209,8 @@ type configPatch struct {
 	Model             *string `json:"model"`
 	OpencodeModel     *string `json:"opencodeModel"`
 	OpenWith          *string `json:"openWith"`
+	AutoOpen          *bool   `json:"autoOpen"`
+	PromptFile        *string `json:"promptFile"`
 	TyporaPath        *string `json:"typoraPath"`
 	OnExists          *string `json:"onExists"`
 	KeepSubtitle      *bool   `json:"keepSubtitle"`
@@ -235,6 +243,12 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	if patch.OpenWith != nil {
 		s.cfg.OpenWith = *patch.OpenWith
+	}
+	if patch.AutoOpen != nil {
+		s.cfg.AutoOpen = *patch.AutoOpen
+	}
+	if patch.PromptFile != nil {
+		s.cfg.PromptFile = *patch.PromptFile
 	}
 	if patch.TyporaPath != nil {
 		s.cfg.TyporaPath = *patch.TyporaPath
@@ -333,6 +347,7 @@ type summarizeRequest struct {
 	OpencodeModel     string `json:"opencodeModel"`
 	OutDir            string `json:"outDir"`
 	OpenWith          string `json:"openWith"`
+	AutoOpen          *bool  `json:"autoOpen"`
 	KeepSubtitle      bool   `json:"keepSubtitle"`
 	IncludeTranscript bool   `json:"includeTranscript"`
 }
@@ -362,6 +377,7 @@ func (s *Server) handleSummarize(w http.ResponseWriter, r *http.Request) {
 		OpencodeModel:     req.OpencodeModel,
 		OutDir:            req.OutDir,
 		OpenWith:          req.OpenWith,
+		AutoOpen:          req.AutoOpen,
 		KeepSubtitle:      req.KeepSubtitle,
 		IncludeTranscript: req.IncludeTranscript,
 	}, logf)

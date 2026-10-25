@@ -178,6 +178,7 @@ type RunOptions struct {
 	OpencodeModel     string // opencode 模型
 	OutDir            string // 输出目录
 	OpenWith          string // typora | obsidian | none
+	AutoOpen          *bool  // 覆盖配置里的 autoOpen；nil 表示用配置
 	KeepSubtitle      bool
 	IncludeTranscript bool
 	OnExists          string // suffix | overwrite | skip
@@ -209,9 +210,6 @@ func Run(ctx context.Context, cfg *config.Config, o RunOptions, logf LogFunc) (*
 	}
 	if o.OpencodeModel != "" {
 		c.OpencodeModel = o.OpencodeModel
-	}
-	if o.OpenWith != "" {
-		c.OpenWith = o.OpenWith
 	}
 	if o.OnExists != "" {
 		c.OnExists = o.OnExists
@@ -293,8 +291,19 @@ func Run(ctx context.Context, cfg *config.Config, o RunOptions, logf LogFunc) (*
 	res.Path = path
 	log("已保存：%s", path)
 
-	if c.OpenWith != "" && c.OpenWith != "none" {
-		if err := note.Open(path, c); err != nil {
+	openWith := c.OpenWith
+	autoOpen := c.AutoOpen
+	if o.OpenWith != "" {
+		openWith = o.OpenWith
+		autoOpen = openWith != "none"
+	}
+	if o.AutoOpen != nil {
+		autoOpen = *o.AutoOpen
+	}
+	if autoOpen && openWith != "" && openWith != "none" {
+		oc := *c
+		oc.OpenWith = openWith
+		if err := note.Open(path, &oc); err != nil {
 			log("自动打开失败：%v", err)
 		}
 	}
