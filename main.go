@@ -74,6 +74,7 @@ type runOptions struct {
 	keepSub           bool
 	includeTranscript bool
 	onExists          string
+	clipboard         bool
 	dryRun            bool
 	verbose           bool
 	autoOpen          bool
@@ -109,6 +110,7 @@ func parseRunArgs(args []string) (runOptions, string, error) {
 	boolean := map[string]*bool{
 		"no-open": &o.noOpen, "keep-sub": &o.keepSub,
 		"include-transcript": &o.includeTranscript, "dry-run": &o.dryRun, "verbose": &o.verbose, "auto-open": &o.autoOpen,
+		"clipboard": &o.clipboard,
 	}
 	var parts []string
 	i := 0
@@ -164,8 +166,23 @@ func runFetch(args []string) error {
 	if err != nil {
 		return err
 	}
+	if o.clipboard {
+		text, err := readClipboardText()
+		if err != nil {
+			return fmt.Errorf("读剪贴板失败：%w", err)
+		}
+		text = strings.TrimSpace(text)
+		if text == "" {
+			return errors.New("剪贴板是空的")
+		}
+		fmt.Printf("从剪贴板读取：%s\n", preview(text, 100))
+		input = text
+	}
 	if input == "" {
-		return errors.New("缺少 B 站视频链接或 BV 号")
+		return errors.New("缺少 B 站视频链接或 BV 号（也可以用 --clipboard 从剪贴板读取）")
+	}
+	if hint := shareTextHint(input); hint != "" {
+		return errors.New(hint)
 	}
 	cfg, _, err := loadConfig(o.config)
 	if err != nil {
@@ -391,6 +408,22 @@ func runConfig(args []string) error {
 
 // ---------- 辅助 ----------
 
+// shareTextHint 识别被 shell 截断的分享文案，给出可操作提示。
+func shareTextHint(input string) string {
+	lower := strings.ToLower(input)
+	if !strings.Contains(input, "【") && !strings.Contains(input, "】") {
+		return ""
+	}
+	if strings.Contains(lower, "http") || strings.Contains(lower, "b23.tv") || strings.Contains(input, "BV") {
+		return ""
+	}
+	return `这段输入像是 B 站分享文案，但里面没有链接或 BV 号，通常是被 shell 截断了。
+PowerShell 会把「;」和「|」当成命令分隔符，整段文案请用单引号包起来：
+  bili-sub.exe '【标题】https://www.bilibili.com/video/BVxxxxxxxx'
+也可以先把文案复制到剪贴板，再运行：
+  bili-sub.exe --clipboard`
+}
+
 func loadConfig(path string) (*config.Config, string, error) {
 	if path == "" {
 		path = config.DefaultPath()
@@ -501,7 +534,8 @@ func printUsage() {
 	fmt.Println("输入：")
 	fmt.Println("  BV 号、av 号、完整链接、b23.tv 短链，或者直接粘贴 B 站分享文案")
 	fmt.Println("  （【标题】+ 链接 也行；自动提取 BV 号，忽略 vd_source 等参数，保留 ?p= 分P）")
-	fmt.Println("  （分享文案里有空格或分号时，整段用引号包起来；PowerShell 用单引号）")
+	fmt.Println("  （分享文案里有空格、分号或竖线时，整段用引号包起来；PowerShell 用单引号）")
+	fmt.Println("  （也可以先复制文案，再用 --clipboard 从剪贴板读取）")
 	fmt.Println()
 	fmt.Println("常用示例：")
 	fmt.Println("  bili-sub BV1xx411c7mD")
@@ -531,6 +565,7 @@ func printUsage() {
 		{"--dry-run", "只下字幕并预览，不总结"},
 		{"--verbose", "打印详细过程"},
 		{"--config <路径>", "指定配置文件"},
+		{"--clipboard", "从剪贴板读取链接/分享文案（PowerShell 里不怕 ; 和 |）"},
 	})
 	fmt.Println()
 	fmt.Println("提示词预设：")

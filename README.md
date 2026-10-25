@@ -34,6 +34,7 @@ bili-sub BV1xx411c7mD --preset faithful        rem 用「忠实校对」预设
 bili-sub BV1xx411c7mD --dry-run --verbose      rem 只看字幕，不总结
 bili-sub BV1xx411c7mD --summarizer opencode    rem 用 OpenCode Go 总结
 bili-sub BV1xx411c7mD --prompt my-prompt.md    rem 用自定义提示词文件
+bili-sub --clipboard --summarizer opencode     rem 从剪贴板读分享文案（不会有 shell 转义问题）
 bili-sub gui                                   rem 本地 Web UI，自动开浏览器
 bili-sub login --open-qr                       rem 扫码登录/续期
 bili-sub config                                rem 查看当前配置
