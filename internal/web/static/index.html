@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bili-sub</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>bili-sub <span class="ver">v0.2</span></h1>
+  <span class="muted" id="configPath"></span>
+</header>
+<main>
+  <section class="card">
+    <div class="row">
+      <input id="input" class="grow" placeholder="BV 号 / 完整链接 / b23.tv 短链，例如 BV12qnt6VEM1" autofocus>
+      <button id="btnFetch">只看字幕</button>
+      <button id="btnRun" class="primary">生成稿件</button>
+      <button id="btnCancel" class="danger hidden">取消</button>
+    </div>
+    <div class="row wrap">
+      <label>后端
+        <select id="summarizer">
+          <option value="api">DeepSeek API</option>
+          <option value="opencode">opencode</option>
+        </select>
+      </label>
+      <label class="grow2">模型 <input id="model"></label>
+      <label>字幕来源
+        <select id="engine">
+          <option value="auto">自动（API 优先）</option>
+          <option value="api">仅 API</option>
+          <option value="ytdlp">仅 yt-dlp</option>
+        </select>
+      </label>
+      <label>打开方式
+        <select id="openWith">
+          <option value="typora">Typora</option>
+          <option value="obsidian">Obsidian</option>
+          <option value="none">不打开</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <label class="grow">输出目录 <input id="outDir" class="grow"></label>
+    </div>
+    <div class="row small">
+      <span id="status" class="muted">就绪</span>
+      <span id="timer" class="muted"></span>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2>字幕 <span id="subMeta" class="muted"></span></h2>
+      <div class="row">
+        <button id="btnCopyText">复制字幕</button>
+        <button id="btnDownloadSrt">下载 .srt</button>
+        <button id="btnDownloadTxt">下载 .txt</button>
+      </div>
+      <pre id="subText" class="scroll tall"></pre>
+    </section>
+
+    <section class="card">
+      <h2>提示词</h2>
+      <textarea id="prompt" class="scroll tall" spellcheck="false"></textarea>
+      <div class="row wrap">
+        <button id="btnResetPrompt">恢复默认</button>
+        <button id="btnSavePrompt">保存为默认</button>
+        <label><input type="checkbox" id="keepSub"> 保留 .srt</label>
+        <label><input type="checkbox" id="includeTranscript"> 附字幕正文</label>
+      </div>
+      <div class="row small muted">占位符：{{title}} {{owner}} {{source}} {{bvid}} {{duration}} {{transcript}}</div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>结果</h2>
+    <div id="resultBox" class="hidden">
+      <div class="row"><strong id="resultPath"></strong></div>
+      <div class="row">
+        <button id="btnOpenTypora">Typora 打开</button>
+        <button id="btnOpenObsidian">Obsidian 打开</button>
+        <button id="btnShowFolder">打开所在目录</button>
+      </div>
+      <pre id="summaryPreview" class="scroll tall"></pre>
+    </div>
+    <pre id="log" class="scroll"></pre>
+  </section>
+
+  <section class="card">
+    <h2>最近</h2>
+    <ul id="history" class="history"></ul>
+  </section>
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>
