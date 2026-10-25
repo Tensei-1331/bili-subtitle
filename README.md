@@ -2,6 +2,10 @@
 
 给一个 B 站视频链接（BV 号、完整 URL、b23.tv 短链都行），自动下载该视频的 AI 字幕，用 DeepSeek API 或本机 opencode 整理成 Markdown 稿件。支持整体总结、忠实校对、简版摘要、提纲等提示词预设，CLI 和本地 Web UI 两种用法。
 
+## 下载
+
+不想自己编译的话，去 [Releases](https://github.com/Tensei-1331/bili-subtitle/releases) 下载 `bili-sub-vX.Y.Z-windows-amd64.zip`：里面已经包含 exe、`prompts/`、`templates/`、README 和 LICENSE，解压后直接运行。
+
 ## 技术栈
 
 - **Go**：单文件静态 exe，无运行时依赖（Windows）
