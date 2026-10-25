@@ -4,7 +4,7 @@
 
 ## 下载
 
-不想自己编译的话，去 [Releases](https://github.com/Tensei-1331/bili-subtitle/releases) 下载 `bili-sub-vX.Y.Z-windows-amd64.zip`：里面已经包含 exe、`prompts/`、`templates/`、README 和 LICENSE，解压后直接运行。
+不想自己编译的话，去 [Releases](https://github.com/hazukihira/bili-subtitle/releases) 下载 `bili-sub-vX.Y.Z-windows-amd64.zip`：里面已经包含 exe、`prompts/`、`templates/`、README 和 LICENSE，解压后直接运行。
 
 ## 技术栈
 
